@@ -1,0 +1,126 @@
+name: ArchGuard API Contract Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  api-contract-check:
+    name: 🛡 API Contract Diff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install ArchGuard
+        run: npm install -g @archguard/cli
+
+      - name: Start NestJS application
+        run: |
+          npm run start:prod &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          # Wait for the app to be ready
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/api-json > /dev/null 2>&1; do sleep 2; done'
+          echo "✅ Application is ready"
+        env:
+          NODE_ENV: production
+          PORT: 3000
+
+      - name: Restore previous snapshot
+        uses: actions/cache@v4
+        with:
+          path: .archguard/
+          key: archguard-snapshot-${{ github.base_ref || github.ref_name }}
+          restore-keys: |
+            archguard-snapshot-
+
+      - name: Capture current API snapshot
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: archguard snapshot --url http://localhost:3000/api-json
+
+      - name: Run API diff
+        if: github.event_name == 'pull_request'
+        id: api_diff
+        run: |
+          archguard diff --url http://localhost:3000/api-json --no-commit
+          echo "has_changes=$([ -f docs/architecture/history/diff-latest.md ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Upload diff report as artifact
+        if: github.event_name == 'pull_request' && steps.api_diff.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: archguard-diff-report
+          path: docs/architecture/history/diff-latest.md
+          retention-days: 30
+
+      - name: Comment diff on PR
+        if: github.event_name == 'pull_request' && steps.api_diff.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'docs/architecture/history/diff-latest.md';
+            if (!fs.existsSync(reportPath)) {
+              console.log('No diff report found — skipping PR comment.');
+              return;
+            }
+            const body = fs.readFileSync(reportPath, 'utf-8');
+            const truncated = body.length > 65000 ? body.slice(0, 65000) + '\n\n_...report truncated. See artifact for full diff._' : body;
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body.includes('🛡 ArchGuard Diff Report'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: truncated,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: truncated,
+              });
+            }
+
+      - name: Fail on breaking changes
+        if: github.event_name == 'pull_request'
+        run: |
+          if grep -q "Breaking Changes | \*\*[1-9]" docs/architecture/history/diff-latest.md 2>/dev/null; then
+            echo "::error::🔴 Breaking API changes detected! Review the diff report before merging."
+            exit 1
+          fi
+
+      - name: Save updated snapshot (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: .archguard/
+          key: archguard-snapshot-${{ github.ref_name }}-${{ github.sha }}
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID 2>/dev/null || true
+          fi

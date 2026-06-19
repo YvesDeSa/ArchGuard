@@ -1,0 +1,14 @@
+{
+  "projectName": "my-nestjs-api",
+  "historyPath": "./docs/architecture/history",
+  "snapshotPath": "./.archguard",
+  "swaggerUrl": "http://localhost:3000/api-json",
+  "swaggerEntryPoint": "./src/main.ts",
+  "notify": {
+    "breakingChangesOnly": false
+  },
+  "git": {
+    "autoCommit": false,
+    "commitMessage": "chore(docs): update architecture history [skip ci]"
+  }
+}
