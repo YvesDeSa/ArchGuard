@@ -1,15 +1,18 @@
-# 🛡 ArchGuard
-
 <div align="center">
+
+# 🛡 ArchGuard
 
 **Contract & Architecture Evolution Manager for NestJS**
 
-*Automated API diffing, breaking-change detection, and living documentation — built for teams that move fast without breaking things.*
+*Automated API diffing, breaking-change detection, and living documentation —  
+built for teams that move fast without breaking things.*
 
-[![npm version](https://img.shields.io/npm/v/@archguard/cli?color=%230070f3&style=flat-square)](https://www.npmjs.com/package/@archguard/cli)
-[![license](https://img.shields.io/npm/l/@archguard/cli?color=%2322c55e&style=flat-square)](./LICENSE)
-[![node](https://img.shields.io/node/v/@archguard/cli?color=%23f59e0b&style=flat-square)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![npm version](https://img.shields.io/npm/v/archguard-cli?color=%230070f3&style=flat-square)](https://www.npmjs.com/package/archguard-cli)
+[![npm downloads](https://img.shields.io/npm/dm/archguard-cli?color=%2322c55e&style=flat-square)](https://www.npmjs.com/package/archguard-cli)
+[![license](https://img.shields.io/npm/l/archguard-cli?color=%23f59e0b&style=flat-square)](./LICENSE)
+[![node](https://img.shields.io/node/v/archguard-cli?style=flat-square)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![tests](https://img.shields.io/badge/tests-47%20passing-brightgreen?style=flat-square)](./src/__tests__)
 
 </div>
 
@@ -17,27 +20,42 @@
 
 ## 📚 Table of Contents
 
-1. [Features](#-features)
-2. [Installation](#-installation)
-3. [Quick Start](#-quick-start)
-4. [Configuration](#️-configuration)
-5. [CLI Commands](#-cli-commands)
-6. [CI/CD Integration](#-cicd-integration)
-7. [Roadmap](#-roadmap)
-8. [Contributing](#-contributing)
-9. [License](#-license)
+1. [Why ArchGuard?](#-why-archguard)
+2. [Features](#-features)
+3. [Installation](#-installation)
+4. [NestJS Setup](#-nestjs-setup)
+5. [Quick Start](#-quick-start)
+6. [Configuration](#️-configuration)
+7. [CLI Commands](#-cli-commands)
+8. [Diff Report Example](#-diff-report-example)
+9. [CI/CD Integration](#-cicd-integration)
+10. [Programmatic Usage](#-programmatic-usage)
+11. [Roadmap](#-roadmap)
+12. [Contributing](#-contributing)
+13. [License](#-license)
+
+---
+
+## 💡 Why ArchGuard?
+
+| Problem | Without ArchGuard | With ArchGuard |
+|---------|-------------------|----------------|
+| API contract changes | Discovered by broken Frontend | Caught instantly, before merge |
+| Documentation drift | Swagger is always outdated | Auto-generated from live spec |
+| Change history | "Who changed this route?" 🤷 | Git-tracked diff reports forever |
+| Breaking changes in PR | Found in code review (maybe) | Blocked at CI, flagged automatically |
 
 ---
 
 ## ✨ Features
 
 - 🔍 **Automatic API Snapshotting** — Captures your OpenAPI/Swagger spec at any point in time
-- 🔴 **Breaking-Change Detection** — Immediately flags removed endpoints, deleted required fields, and changed parameter types
-- 🟡 **Non-Breaking Change Tracking** — Tracks added endpoints, optional parameters, and response expansions
+- 🔴 **Breaking-Change Detection** — Flags removed endpoints, deleted required fields, changed parameter types
+- 🟡 **Non-Breaking Change Tracking** — Tracks added endpoints, optional parameters, response expansions
 - 📄 **Markdown Diff Reports** — Beautiful, readable reports committed directly into your git history
-- 📚 **Living Architecture Index** — An auto-maintained `INDEX.md` with every diff ever generated
-- 🤝 **NestJS-First** — Designed for the NestJS + Swagger ecosystem; works with any OpenAPI 3.x spec
-- 🤖 **GitHub Actions Integration** — Posts diff reports as PR comments and blocks merges on breaking changes
+- 📚 **Living Architecture Index** — Auto-maintained `INDEX.md` with every diff ever generated
+- 🤝 **NestJS-First** — Designed for the NestJS + `@nestjs/swagger` ecosystem; works with any OpenAPI 3.x spec
+- 🤖 **GitHub Actions Integration** — Posts diff reports as PR comments, blocks merges on breaking changes
 - 🔗 **Git Auto-Commit** — Optionally auto-commits snapshots and reports so your architecture history is always versioned
 - 📦 **Library Mode** — Use ArchGuard programmatically in your own scripts or tooling
 
@@ -45,39 +63,89 @@
 
 ## 📦 Installation
 
-### Global (recommended for CLI use)
+### As a dev dependency in your NestJS project (recommended)
 
 ```bash
-npm install -g @archguard/cli
+npm install --save-dev archguard-cli
 ```
 
-### Local (per-project)
+Then add scripts to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "arch:init":     "archguard init",
+    "arch:snapshot": "archguard snapshot",
+    "arch:diff":     "archguard diff",
+    "arch:history":  "archguard history"
+  }
+}
+```
+
+### Global install (use anywhere)
 
 ```bash
-npm install --save-dev @archguard/cli
+npm install -g archguard-cli
 ```
 
-### Use without installing (npx)
+### Without installing (npx)
 
 ```bash
-npx @archguard/cli init
+npx archguard-cli init
+npx archguard-cli snapshot
+npx archguard-cli diff
 ```
+
+---
+
+## 🏗 NestJS Setup
+
+ArchGuard reads your live OpenAPI spec. Make sure Swagger is enabled in your NestJS app:
+
+```typescript
+// src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  const config = new DocumentBuilder()
+    .setTitle('My API')
+    .setVersion('1.0')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+  // ↑ This exposes the JSON spec at: http://localhost:3000/api-json
+
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+> ArchGuard fetches `http://localhost:3000/api-json` by default.  
+> You can override this in `archguard.config.json` or via `--url`.
 
 ---
 
 ## 🚀 Quick Start
 
-**Three commands to get started:**
-
 ```bash
-# 1. Initialize ArchGuard in your project
-archguard init
+# 1. Initialize ArchGuard in your NestJS project
+npx archguard-cli init
 
-# 2. Capture a baseline snapshot (with your NestJS app running)
-archguard snapshot
+# 2. Start your NestJS app
+npm run start:dev
 
-# 3. After making API changes, generate a diff report
-archguard diff
+# 3. Capture the current API as a baseline snapshot
+npx archguard-cli snapshot
+
+# 4. Make changes to your API (add a route, change a DTO, remove a param...)
+
+# 5. Generate a diff report
+npx archguard-cli diff
 ```
 
 **Expected output for `archguard diff`:**
@@ -98,24 +166,13 @@ archguard diff
 ✔ Diff completed! Check the report for details.
 ```
 
+The generated report appears at `./docs/architecture/history/diff-latest.md` — ready to commit and share with your Frontend team.
+
 ---
 
 ## ⚙️ Configuration
 
-ArchGuard is configured via `archguard.config.json` in your project root (created by `archguard init`).
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `projectName` | `string` | `"my-api"` | Display name for your project |
-| `historyPath` | `string` | `"./docs/architecture/history"` | Directory where diff reports are stored |
-| `snapshotPath` | `string` | `"./.archguard"` | Directory where snapshots are stored |
-| `swaggerUrl` | `string` | `"http://localhost:3000/api-json"` | URL to fetch the OpenAPI JSON spec |
-| `swaggerEntryPoint` | `string` | `"./src/main.ts"` | *(Future)* Path to NestJS entry for static extraction |
-| `notify.breakingChangesOnly` | `boolean` | `false` | When `true`, only emit warnings for breaking changes |
-| `git.autoCommit` | `boolean` | `false` | Automatically commit snapshots and reports |
-| `git.commitMessage` | `string` | `"chore(docs): update architecture history [skip ci]"` | Commit message template |
-
-**Example `archguard.config.json`:**
+ArchGuard is configured via `archguard.config.json` in your project root (created automatically by `archguard init`).
 
 ```json
 {
@@ -124,7 +181,7 @@ ArchGuard is configured via `archguard.config.json` in your project root (create
   "snapshotPath": "./.archguard",
   "swaggerUrl": "http://localhost:3000/api-json",
   "notify": {
-    "breakingChangesOnly": true
+    "breakingChangesOnly": false
   },
   "git": {
     "autoCommit": true,
@@ -133,28 +190,34 @@ ArchGuard is configured via `archguard.config.json` in your project root (create
 }
 ```
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `projectName` | `string` | folder name | Display name for your project |
+| `historyPath` | `string` | `"./docs/architecture/history"` | Where diff reports are stored |
+| `snapshotPath` | `string` | `"./.archguard"` | Where snapshots are stored |
+| `swaggerUrl` | `string` | `"http://localhost:3000/api-json"` | URL to fetch the OpenAPI JSON spec |
+| `notify.breakingChangesOnly` | `boolean` | `false` | Only flag breaking changes |
+| `git.autoCommit` | `boolean` | `false` | Auto-commit snapshots and reports |
+| `git.commitMessage` | `string` | `"chore(docs): ..."` | Commit message template |
+
 ---
 
 ## 💻 CLI Commands
 
-| Command | Description | Key Options |
-|---------|-------------|-------------|
-| `archguard init` | Initialize ArchGuard in the current directory | `--force` — overwrite existing config |
-| `archguard snapshot` | Capture the current OpenAPI spec as a snapshot | `--url <url>` — override the Swagger URL |
-| `archguard diff` | Compare the latest snapshot with the current spec | `--url`, `--no-commit` |
-| `archguard history` | List all stored snapshots and diff reports | `--snapshots`, `--reports` |
+| Command | Description | Options |
+|---------|-------------|---------|
+| `archguard init` | Initialize ArchGuard in the current directory | `--force` overwrite existing config |
+| `archguard snapshot` | Capture the current OpenAPI spec | `--url <url>` override Swagger URL |
+| `archguard diff` | Compare latest snapshot with current spec | `--url <url>`, `--no-commit` |
+| `archguard history` | List stored snapshots and diff reports | `--snapshots`, `--reports` |
 
 ### `archguard init`
 
-```bash
-archguard init [--force]
-```
-
 Creates:
-- `archguard.config.json`
-- `.archguard/` (snapshot storage)
-- `docs/architecture/history/` (report storage)
-- Updates `.gitignore` with ArchGuard entries
+- `archguard.config.json` — project configuration
+- `.archguard/` — snapshot storage (add to `.gitignore` if desired)
+- `docs/architecture/history/` — diff report history (commit this!)
+- Appends ArchGuard entries to `.gitignore`
 
 ### `archguard snapshot`
 
@@ -162,7 +225,7 @@ Creates:
 archguard snapshot [--url http://localhost:3000/api-json]
 ```
 
-Fetches your OpenAPI spec and saves it as a timestamped JSON snapshot. Always overwrites `snapshot-latest.json` for diff comparison.
+Fetches your OpenAPI spec and saves a timestamped JSON snapshot. Always writes `snapshot-latest.json` as the baseline for the next diff.
 
 ### `archguard diff`
 
@@ -170,12 +233,12 @@ Fetches your OpenAPI spec and saves it as a timestamped JSON snapshot. Always ov
 archguard diff [--url <url>] [--no-commit]
 ```
 
-1. Loads `snapshot-latest.json` as the baseline
-2. Fetches the current spec
-3. Runs the diff engine (endpoints + schemas + parameters)
-4. Generates a Markdown report with before/after details
-5. Saves the report and updates `INDEX.md`
-6. Optionally auto-commits to git
+1. Loads `snapshot-latest.json` as baseline
+2. Fetches the current spec from your running app
+3. Runs the diff engine (endpoints + schemas + parameters + responses)
+4. Classifies each change as **breaking**, **non-breaking**, or **informational**
+5. Generates a Markdown report with Before/After details
+6. Updates `INDEX.md` and optionally auto-commits to git
 
 ### `archguard history`
 
@@ -183,7 +246,50 @@ archguard diff [--url <url>] [--no-commit]
 archguard history [--snapshots] [--reports]
 ```
 
-Lists all snapshots in `.archguard/` and all diff reports in `docs/architecture/history/`.
+Lists all snapshots and diff reports with timestamps.
+
+---
+
+## 📋 Diff Report Example
+
+Generated reports look like this:
+
+```markdown
+# 🛡 ArchGuard Diff Report
+
+**Project:** payments-api  
+**From:** `snapshot-2024-01-14T10-00-00.json`  
+**To:** `snapshot-2024-01-15T14-30-00.json`
+
+## 📊 Summary
+
+| Metric | Count |
+|--------|-------|
+| 🔴 Breaking Changes | **2** |
+| Total Changes | 5 |
+| ➕ Added Endpoints | 1 |
+| ➖ Removed Endpoints | 1 |
+| 🔄 Modified Endpoints | 0 |
+| Modified Schemas | 2 |
+
+> ⚠️ **WARNING:** 2 breaking change(s) require immediate Frontend attention.
+
+## 🔌 Endpoint Changes
+
+### ➖ 🔴 `DELETE /v1/users/{id}`
+
+**Severity:** BREAKING  
+**Change:** [Users] Endpoint removed: Delete user  
+**Frontend Impact:** ⚠️ Remove all calls to this endpoint from your codebase.
+
+---
+
+### ➕ 🟢 `POST /v2/users/{id}/deactivate`
+
+**Severity:** NON-BREAKING  
+**Change:** [Users] Endpoint added: Deactivate user  
+**Frontend Impact:** New endpoint available — implement integration if needed.
+```
 
 ---
 
@@ -191,10 +297,10 @@ Lists all snapshots in `.archguard/` and all diff reports in `docs/architecture/
 
 ### GitHub Actions
 
-Add the workflow file to your repository at `.github/workflows/archguard.yml`:
+Copy `.github/workflows/archguard.yml` to your NestJS repository:
 
 ```yaml
-name: ArchGuard API Contract Check
+name: 🛡 ArchGuard API Contract Check
 
 on:
   push:
@@ -208,10 +314,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -225,25 +331,80 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .archguard/
-          key: archguard-snapshot-${{ github.base_ref }}
+          key: archguard-snapshot-${{ github.base_ref || github.ref_name }}
 
-      - name: Run API diff (PRs only)
+      - name: Run ArchGuard diff
         if: github.event_name == 'pull_request'
-        run: npx @archguard/cli diff --no-commit
+        run: npx archguard-cli diff --no-commit
 
-      - name: Fail on breaking changes
+      - name: Comment PR with diff
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const file = 'docs/architecture/history/diff-latest.md';
+            if (!fs.existsSync(file)) return;
+            const body = fs.readFileSync(file, 'utf-8').slice(0, 65000);
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🛡 ArchGuard API Diff\n\n${body}`
+            });
+
+      - name: Block merge on breaking changes
+        if: github.event_name == 'pull_request'
         run: |
-          if grep -q "Breaking Changes | \*\*[1-9]" docs/architecture/history/diff-latest.md; then
-            echo "🔴 Breaking changes detected!"
+          if grep -q "Breaking Changes | \*\*[1-9]" docs/architecture/history/diff-latest.md 2>/dev/null; then
+            echo "🔴 Breaking API changes detected! Fix before merging."
             exit 1
           fi
+
+      - name: Save snapshot on main push
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: npx archguard-cli snapshot
 ```
 
-**What it does:**
-- 📸 Saves snapshots on every `main` push (cached between runs)
-- 🔍 Runs a full diff on every Pull Request
-- 💬 Posts the Markdown report as a PR comment (auto-updates on re-push)
-- 🚫 **Blocks the merge** if breaking changes are detected
+---
+
+## 🔧 Programmatic Usage
+
+Use ArchGuard as a library in your own scripts:
+
+```typescript
+import {
+  captureSnapshot,
+  loadLatestSnapshot,
+  saveSnapshot,
+  generateDiff,
+  generateMarkdownReport,
+  saveReport,
+  loadConfig,
+} from 'archguard-cli';
+
+const config = loadConfig(); // reads archguard.config.json
+
+// Capture current state
+const current = await captureSnapshot(config);
+
+// Load previous state
+const previous = loadLatestSnapshot(config);
+
+if (previous) {
+  // Generate diff
+  const report = generateDiff(previous, current);
+
+  console.log(`Breaking changes: ${report.summary.breakingChanges}`);
+
+  // Generate and save Markdown report
+  const markdown = generateMarkdownReport(report, config);
+  saveReport(markdown, report, config);
+}
+
+// Save current as new baseline
+saveSnapshot(current, config);
+```
 
 ---
 
@@ -251,43 +412,34 @@ jobs:
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| **Phase 1** | Core CLI (init, snapshot, diff, history) | ✅ Complete |
-| **Phase 2** | GitHub Actions CI/CD integration + PR comments | ✅ Complete |
-| **Phase 3** | Static spec extraction from NestJS decorators (no running server needed) | 🔨 In Progress |
-| **Phase 4** | Frontend SDK type generation from diff (TypeScript interfaces auto-updated) | 📋 Planned |
-| **Phase 5** | Web dashboard — visual architecture timeline with searchable history | 📋 Planned |
+| **Phase 1** | Core CLI — init, snapshot, diff, history | ✅ Done |
+| **Phase 2** | GitHub Actions CI/CD + PR comments | ✅ Done |
+| **Phase 3** | 47 unit tests + Jest coverage | ✅ Done |
+| **Phase 4** | Static extraction from NestJS decorators (no running server) | 🔨 In Progress |
+| **Phase 5** | Frontend SDK type generation from diff | 📋 Planned |
+| **Phase 6** | Web dashboard — visual architecture timeline | 📋 Planned |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! To get started:
-
-1. **Fork** the repository
-2. **Clone** your fork: `git clone https://github.com/your-name/archguard-cli.git`
-3. **Install** dependencies: `npm install`
-4. **Create** a feature branch: `git checkout -b feat/my-feature`
-5. **Develop** with live TypeScript: `npm run dev`
-6. **Test** your changes: `npm test`
-7. **Build**: `npm run build`
-8. **Submit** a Pull Request
-
-### Development Setup
+Contributions are welcome!
 
 ```bash
-# Clone the repo
-git clone https://github.com/archguard/cli.git
-cd cli
+# 1. Fork and clone
+git clone https://github.com/YvesDeSa/ArchGuard.git
+cd ArchGuard
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Run the CLI locally (ts-node, no build needed)
-npm run dev -- init
-npm run dev -- snapshot
-npm run dev -- diff
+# 3. Run tests
+npm test
 
-# Build the TypeScript
+# 4. Develop with live TypeScript (no build step)
+npm run dev -- snapshot --url http://localhost:3000/api-json
+
+# 5. Build
 npm run build
 ```
 
@@ -296,7 +448,7 @@ npm run build
 ```
 src/
 ├── bin/
-│   └── archguard.ts       # CLI entry point (Commander)
+│   └── archguard.ts       # CLI entry point (Commander.js)
 ├── commands/
 │   ├── init.ts            # archguard init
 │   ├── snapshot.ts        # archguard snapshot
@@ -304,14 +456,18 @@ src/
 │   └── history.ts         # archguard history
 ├── core/
 │   ├── snapshot.ts        # Snapshot capture & persistence
-│   ├── differ.ts          # OpenAPI diff engine
+│   ├── differ.ts          # OpenAPI diff engine (breaking change detection)
 │   ├── reporter.ts        # Markdown report generator
 │   └── git-integration.ts # simple-git auto-commit
 ├── utils/
-│   ├── config.ts          # Config loading & path resolution
+│   ├── config.ts          # Config loader & path resolution
 │   └── logger.ts          # Chalk-powered logger
 ├── types/
 │   └── index.ts           # All TypeScript interfaces
+├── __tests__/
+│   ├── differ.test.ts     # 35 diff engine tests
+│   ├── snapshot.test.ts   # Snapshot I/O tests
+│   └── reporter.test.ts   # Report generation tests
 └── index.ts               # Public library API
 ```
 
@@ -319,13 +475,15 @@ src/
 
 ## 📄 License
 
-MIT © [ArchGuard Contributors](https://github.com/archguard)
+MIT © [Yves De Sá](https://github.com/YvesDeSa)
 
 ---
 
 <div align="center">
 
 Made with ❤️ for the NestJS community
+
+**[NPM](https://www.npmjs.com/package/archguard-cli) · [Issues](https://github.com/YvesDeSa/ArchGuard/issues) · [Changelog](./docs/architecture/history/INDEX.md)**
 
 *If ArchGuard saved you from a breaking change, give it a ⭐*
 

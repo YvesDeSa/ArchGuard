@@ -1,7 +1,15 @@
 {
-  "name": "@archguard/cli",
+  "name": "@dsyves/archguard-cli",
   "version": "0.1.0",
   "description": "Contract & Architecture Evolution Manager for NestJS — automated API diff and documentation.",
+  "homepage": "https://github.com/YvesDeSa/ArchGuard#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YvesDeSa/ArchGuard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YvesDeSa/ArchGuard/issues"
+  },
   "keywords": [
     "nestjs",
     "openapi",
